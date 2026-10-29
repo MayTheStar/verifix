@@ -43,35 +43,27 @@ def verify_recovery(sim: Simulator, window: int = 8, stable_ticks: int = 4,
     """Advance the simulation `window` ticks and judge from metric history.
 
     RECOVERED : all services healthy for the last `stable_ticks` ticks.
-    PARTIAL   : some services healthy, some not, at the end.
-    DEGRADING : was healthy at some point in the window, then became unhealthy again (flapping).
-    FAILED    : nothing improved (still unhealthy at the end).
+    DEGRADING : was healthy at some point in the window, then unhealthy again (flapping).
+    PARTIAL   : strictly fewer unhealthy services than before the window, but not all healthy.
+    FAILED    : no improvement.
     """
+    # Capture the "before" state ourselves so callers cannot forget it.
     if before_unhealthy is None:
         _, before_unhealthy = system_snapshot_healthy(sim)
-        
+
     start = len(sim.metric_history)
     sim.step(window)
-    
     recent = sim.metric_history[start:]
 
-    per_tick_ok = []
-    for snap in recent:
-        ok = all(service_is_healthy(snap[n]) for n in SERVICES)
-        per_tick_ok.append(ok)
-
+    per_tick_ok = [all(service_is_healthy(snap[n]) for n in SERVICES) for snap in recent]
     healthy, unhealthy = system_snapshot_healthy(sim)
 
     if len(per_tick_ok) >= stable_ticks and all(per_tick_ok[-stable_ticks:]):
         status = "RECOVERED"
     elif any(per_tick_ok) and not per_tick_ok[-1]:
         status = "DEGRADING"
-    elif healthy and unhealthy and len(unhealthy) < len(SERVICES):
-        # Only call it PARTIAL if it improved vs before (when we know "before")
-        if before_unhealthy is not None and len(unhealthy) >= len(before_unhealthy):
-            status = "FAILED"
-        else:
-            status = "PARTIAL"
+    elif unhealthy and len(unhealthy) < len(before_unhealthy):
+        status = "PARTIAL"
     else:
         status = "FAILED"
 
