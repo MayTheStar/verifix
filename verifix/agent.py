@@ -51,6 +51,8 @@ CONFIGS = {
     "v1-no-repeat": replace(V1, name="v1-no-repeat", repeat_guard=False),
     "v1-no-hints": replace(V1, name="v1-no-hints", verifier_hints=False),
     "v1-no-warning": replace(V1, name="v1-no-warning", budget_warning=False),
+    "v0-20steps": replace(V0, name="v0-20steps", max_steps=20),
+    "gate-only": replace(V0, name="gate-only", max_steps=20, investigation_gate=True),
 }
 
 
