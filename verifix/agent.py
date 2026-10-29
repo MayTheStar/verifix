@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field, replace
 
-from verifix.guards import HINTS, SessionState, check_investigation, check_repeat
+from verifix.guards import HINTS, SessionState, check_futility, check_investigation, check_repeat
 from verifix.llm import chat
 from verifix.policy import evaluate_action
 from verifix.simulator import SERVICES, Simulator
@@ -39,12 +39,15 @@ class AgentConfig:
     repeat_guard: bool = False
     verifier_hints: bool = False
     budget_warning: bool = False
+    futility_guard: bool = False
 
 
 V0 = AgentConfig()
 V1 = AgentConfig(name="v1", max_steps=20, investigation_gate=True, repeat_guard=True,
                  verifier_hints=True, budget_warning=True)
+V2 = replace(V1, name="v2", futility_guard=True)
 CONFIGS = {
+    "v2": V2,
     "v0": V0,
     "v1": V1,
     "v1-no-gate": replace(V1, name="v1-no-gate", investigation_gate=False),
@@ -182,6 +185,8 @@ def _handle_action(sim: Simulator, args: dict, approve_fn, trace: list[dict],
     blocked = None
     if config.investigation_gate:
         blocked = check_investigation(state, call_args.get("service"))
+    if blocked is None and config.futility_guard:
+        blocked = check_futility(state)
     if blocked is None and config.repeat_guard:
         blocked = check_repeat(state, action, call_args)
     if blocked:

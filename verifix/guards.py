@@ -26,6 +26,7 @@ class SessionState:
     deploys_checked: bool = False
     configs_checked: set = field(default_factory=set)
     tried: dict = field(default_factory=dict)   # signature -> verifier status
+    history: list = field(default_factory=list)  # every executed action's verifier status, in order
 
     def note_read(self, tool: str, args: dict) -> None:
         if tool == "get_recent_deploys":
@@ -35,6 +36,7 @@ class SessionState:
 
     def note_action(self, action: str, args: dict, status: str) -> None:
         self.tried[signature(action, args)] = status
+        self.history.append(status)
 
 
 def check_investigation(state: SessionState, service: str | None) -> str | None:
@@ -47,6 +49,19 @@ def check_investigation(state: SessionState, service: str | None) -> str | None:
         return ("Investigate before acting: you have not yet called " + " and ".join(missing)
                 + ". Recent changes (deploys, config) are a common root cause. "
                   "Read them, then propose your action again.")
+    return None
+
+
+FUTILITY_LIMIT = 4
+
+
+def check_futility(state: SessionState, limit: int = FUTILITY_LIMIT) -> str | None:
+    """Stop flailing: after `limit` executed actions with no improvement, force escalation."""
+    statuses = state.history
+    if len(statuses) >= limit and not any(s in ("PARTIAL", "RECOVERED") for s in statuses):
+        return (f"{len(statuses)} executed actions produced no measurable improvement. "
+                "Further actions are blocked. The root cause is probably outside what you can "
+                "fix with the available actions. Call finish with escalate=true and explain your findings.")
     return None
 
 
