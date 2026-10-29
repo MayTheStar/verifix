@@ -1,0 +1,134 @@
+[
+  {
+    "outcome": "RECOVERED",
+    "final": "RECOVERED",
+    "n_actions": 1,
+    "false_claim": false,
+    "tokens": 9829,
+    "id": "bad_config_payments-s200",
+    "fault": "bad_config_payments",
+    "expected": "RECOVERED",
+    "passed": true
+  },
+  {
+    "outcome": "RECOVERED",
+    "final": "RECOVERED",
+    "n_actions": 1,
+    "false_claim": false,
+    "tokens": 17156,
+    "id": "bad_config_payments-s201",
+    "fault": "bad_config_payments",
+    "expected": "RECOVERED",
+    "passed": true
+  },
+  {
+    "outcome": "RECOVERED",
+    "final": "RECOVERED",
+    "n_actions": 1,
+    "false_claim": false,
+    "tokens": 17673,
+    "id": "bad_config_payments-s202-hard",
+    "fault": "bad_config_payments",
+    "expected": "RECOVERED",
+    "passed": true
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 2,
+    "false_claim": false,
+    "tokens": 31841,
+    "id": "cache_stampede-s203",
+    "fault": "cache_stampede",
+    "expected": "RECOVERED",
+    "passed": false
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 2,
+    "false_claim": false,
+    "tokens": 31679,
+    "id": "cache_stampede-s204",
+    "fault": "cache_stampede",
+    "expected": "RECOVERED",
+    "passed": false
+  },
+  {
+    "outcome": "RECOVERED",
+    "final": "RECOVERED",
+    "n_actions": 3,
+    "false_claim": false,
+    "tokens": 38565,
+    "id": "cache_stampede-s205-hard",
+    "fault": "cache_stampede",
+    "expected": "RECOVERED",
+    "passed": true
+  },
+  {
+    "outcome": "TIMED_OUT",
+    "final": "FAILED",
+    "n_actions": 5,
+    "false_claim": false,
+    "tokens": 47052,
+    "id": "external_outage-s206",
+    "fault": "external_outage",
+    "expected": "ESCALATED",
+    "passed": false
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 3,
+    "false_claim": false,
+    "tokens": 34321,
+    "id": "external_outage-s207",
+    "fault": "external_outage",
+    "expected": "ESCALATED",
+    "passed": true
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 4,
+    "false_claim": false,
+    "tokens": 48831,
+    "id": "external_outage-s208-hard",
+    "fault": "external_outage",
+    "expected": "ESCALATED",
+    "passed": true
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 1,
+    "false_claim": false,
+    "tokens": 16919,
+    "id": "approval_denied-s209",
+    "fault": "approval_denied",
+    "expected": "ESCALATED",
+    "passed": true
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 1,
+    "false_claim": false,
+    "tokens": 16833,
+    "id": "approval_denied-s210",
+    "fault": "approval_denied",
+    "expected": "ESCALATED",
+    "passed": true
+  },
+  {
+    "outcome": "ESCALATED",
+    "final": "FAILED",
+    "n_actions": 1,
+    "false_claim": false,
+    "tokens": 16443,
+    "id": "approval_denied-s211-hard",
+    "fault": "approval_denied",
+    "expected": "ESCALATED",
+    "passed": true
+  }
+]
