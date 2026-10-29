@@ -54,9 +54,10 @@ class LogLine:
 
 
 class Simulator:
-    def __init__(self, seed: int = 0, red_herrings: bool = False):
+    def __init__(self, seed: int = 0, red_herrings: bool = False, retry_storm: bool = False):
         self.rng = random.Random(seed)
         self.red_herrings = red_herrings
+        self.retry_storm = retry_storm
         self.tick = 0
         self.services = {n: ServiceState(name=n) for n in SERVICES}
         for n, s in self.services.items():
@@ -256,6 +257,8 @@ class Simulator:
         for caller in ["payments", "auth", "orders", "gateway"]:
             for callee in DEPENDENCIES[caller]:
                 inherited = target[callee]["error_rate"] * 0.6
+                if self.retry_storm and caller == "orders":
+                    inherited = min(0.9, inherited * 2.2)  # retries amplify errors in orders
                 if inherited > 0.05:
                     target[caller]["error_rate"] = max(target[caller]["error_rate"], inherited)
                     target[caller]["latency_ms"] = max(
