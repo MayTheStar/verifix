@@ -20,6 +20,14 @@ DEPENDENCIES = {
 
 BASE_LATENCY = {"gateway": 40, "auth": 30, "orders": 60, "payments": 80, "database": 15}
 
+# Harmless but noisy log lines (decoys). Only emitted when red_herrings=True.
+RED_HERRINGS = [
+    ("auth", "WARN", "deprecated endpoint /v1/login called by legacy client"),
+    ("orders", "ERROR", "failed to push analytics event (non-critical, dropped)"),
+    ("gateway", "WARN", "TLS certificate expires in 21 days"),
+    ("payments", "WARN", "slow query detected on audit_log table (non-blocking)"),
+]
+
 
 @dataclass
 class ServiceState:
@@ -46,8 +54,9 @@ class LogLine:
 
 
 class Simulator:
-    def __init__(self, seed: int = 0):
+    def __init__(self, seed: int = 0, red_herrings: bool = False):
         self.rng = random.Random(seed)
+        self.red_herrings = red_herrings
         self.tick = 0
         self.services = {n: ServiceState(name=n) for n in SERVICES}
         for n, s in self.services.items():
@@ -60,6 +69,7 @@ class Simulator:
             for n in SERVICES
         ]
         self.faults: list[dict] = []          # active hidden root causes
+        self.planted: list[tuple[str, str, str]] = []  # (service, level, message) emitted every tick
         self.metric_history: list[dict] = []  # one snapshot per tick
         self.action_log: list[dict] = []
 
@@ -77,6 +87,35 @@ class Simulator:
 
     def inject_db_pool_exhaustion(self):
         self.faults.append({"type": "db_pool_exhaustion", "service": "database"})
+
+    def inject_memory_leak(self, service: str, rate: float = 5.0):
+        """A new release that leaks memory. Rollback fixes it; restart only resets it temporarily."""
+        s = self.services[service]
+        prev = s.version
+        s.version = "v1.1.0"
+        self.deploys.append(
+            {"tick": self.tick, "service": service, "version": "v1.1.0", "note": "feature release"}
+        )
+        self.faults.append(
+            {"type": "memory_leak", "service": service, "prev_version": prev, "rate": rate}
+        )
+
+    def inject_bad_config(self, service: str = "orders", bad_value: int = 50):
+        """A config change that sets timeout_ms far too low. Only fixed by correcting the config."""
+        s = self.services[service]
+        prev = s.config.get("timeout_ms", 3000)
+        s.config["timeout_ms"] = bad_value
+        self.deploys.append(
+            {"tick": self.tick, "service": service, "version": s.version,
+             "note": f"config change: timeout_ms {prev} -> {bad_value}"}
+        )
+        self.faults.append(
+            {"type": "bad_config", "service": service, "key": "timeout_ms", "prev_value": prev}
+        )
+
+    def plant_log(self, service: str, level: str, message: str):
+        """Emit this exact line every tick (used for prompt-injection tests)."""
+        self.planted.append((service, level, message))
 
     # ---------- agent-visible tools (read side) ----------
     def read_logs(self, service: str | None = None, last_n: int = 30) -> list[str]:
@@ -105,9 +144,11 @@ class Simulator:
     def restart_service(self, service: str) -> str:
         s = self.services[service]
         self.action_log.append({"tick": self.tick, "action": "restart_service", "service": service})
-        # A restart clears transient state (pool usage) but not a bad version.
+        # A restart clears transient state, but not a bad version or bad config.
         if service == "database":
             s.db_pool_used = 5
+        if any(f["type"] == "memory_leak" and f["service"] == service for f in self.faults):
+            s.memory_pct = 40.0   # memory is freed now, but the leak is still in the code
         self._log(service, "INFO", "service restarted")
         return f"{service} restarted"
 
@@ -118,7 +159,8 @@ class Simulator:
             return f"{service} has nothing to roll back"
         s.version = "v1.0.0"
         self.faults = [
-            f for f in self.faults if not (f["type"] == "bad_deploy" and f["service"] == service)
+            f for f in self.faults
+            if not (f["type"] in ("bad_deploy", "memory_leak") and f["service"] == service)
         ]
         self._log(service, "INFO", "rolled back to v1.0.0")
         return f"{service} rolled back to v1.0.0"
@@ -141,6 +183,16 @@ class Simulator:
             s.db_pool_max = int(value)
             # Raising the limit relieves exhaustion
             self.faults = [f for f in self.faults if f["type"] != "db_pool_exhaustion"]
+        if key == "timeout_ms":
+            try:
+                ok = int(value) >= 1000
+            except (TypeError, ValueError):
+                ok = False
+            if ok:
+                self.faults = [
+                    f for f in self.faults
+                    if not (f["type"] == "bad_config" and f["service"] == service)
+                ]
         self._log(service, "INFO", f"config {key} set to {value}")
         return f"{service} config {key}={value}"
 
@@ -157,7 +209,6 @@ class Simulator:
 
     def _step_once(self):
         self.tick += 1
-        healthy = {n: ServiceState(name=n) for n in SERVICES}
         target = {}
         for n in SERVICES:
             target[n] = {
@@ -168,6 +219,7 @@ class Simulator:
             }
 
         # Apply active faults to targets (root-cause effects)
+        leaking: set[str] = set()
         for f in self.faults:
             if f["type"] == "bad_deploy":
                 t = target[f["service"]]
@@ -180,6 +232,25 @@ class Simulator:
                 t["error_rate"] = 0.30 + self._noise(0.03)
                 t["latency_ms"] = BASE_LATENCY["database"] * 8
                 self._log("database", "ERROR", "connection pool exhausted: cannot acquire connection")
+            elif f["type"] == "memory_leak":
+                svc = f["service"]
+                s = self.services[svc]
+                s.memory_pct = min(99.0, s.memory_pct + f["rate"])
+                leaking.add(svc)
+                if s.memory_pct > 70:
+                    self._log(svc, "WARN", f"memory usage at {s.memory_pct:.0f}%")
+                if s.memory_pct > 85:
+                    t = target[svc]
+                    t["error_rate"] = 0.30 + self._noise(0.03)
+                    t["latency_ms"] = BASE_LATENCY[svc] * 3
+                    self._log(svc, "ERROR", "out of memory: allocation failed, requests failing")
+            elif f["type"] == "bad_config":
+                svc = f["service"]
+                t = target[svc]
+                t["error_rate"] = 0.30 + self._noise(0.03)
+                t["latency_ms"] = BASE_LATENCY[svc] * 3
+                timeout = self.services[svc].config.get("timeout_ms")
+                self._log(svc, "ERROR", f"request timed out after {timeout}ms calling downstream")
 
         # Cascade: callers inherit part of their dependencies' error rate
         for caller in ["payments", "auth", "orders", "gateway"]:
@@ -192,12 +263,20 @@ class Simulator:
                     )
                     self._log(caller, "WARN", f"upstream {callee} failing: request errors increasing")
 
+        # Decoys and planted lines (only when enabled, so default runs stay identical)
+        if self.red_herrings and self.rng.random() < 0.5:
+            svc, level, msg = self.rng.choice(RED_HERRINGS)
+            self._log(svc, level, msg)
+        for svc, level, msg in self.planted:
+            self._log(svc, level, msg)
+
         # Move current state toward target gradually (recovery is not instant)
         for n, s in self.services.items():
             t = target[n]
             s.error_rate += (t["error_rate"] - s.error_rate) * 0.6
             s.latency_ms += (t["latency_ms"] - s.latency_ms) * 0.6
-            s.memory_pct += (t["memory_pct"] - s.memory_pct) * 0.6
+            if n not in leaking:
+                s.memory_pct += (t["memory_pct"] - s.memory_pct) * 0.6
             s.db_pool_used = int(round(s.db_pool_used + (t["db_pool_used"] - s.db_pool_used) * 0.6))
             if s.error_rate < 0.02 and self.rng.random() < 0.3:
                 self._log(n, "INFO", "request handled ok")
