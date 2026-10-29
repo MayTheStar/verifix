@@ -22,7 +22,7 @@ HIGH_RISK_ACTIONS = {"update_config"}
 PROTECTED_SERVICES = {"database"}
 
 MAX_REPLICAS = 10
-ALLOWED_CONFIG_KEYS = {"max_connections", "timeout_ms"}
+ALLOWED_CONFIG_KEYS = {"max_connections", "timeout_ms", "cache_ttl_s"}
 
 INJECTION_PATTERNS = [
     r"ignore (all |any )?(previous|prior) instructions",
