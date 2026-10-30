@@ -1,0 +1,1 @@
+{"content": null, "tool_calls": [{"id": "call_Q88q8cnXOKZhyR13AoIIXNRi", "name": "get_config", "arguments": "{\"service\":\"database\"}"}], "prompt_tokens": 1628, "completion_tokens": 14, "model": "gpt-4o-mini", "cached": false}

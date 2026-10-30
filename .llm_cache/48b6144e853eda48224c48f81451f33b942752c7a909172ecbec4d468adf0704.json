@@ -1,0 +1,1 @@
+{"content": null, "tool_calls": [{"id": "call_jtV5G699JlgxxMrgJd9sUSDi", "name": "query_metrics", "arguments": "{\"service\":\"payments\"}"}], "prompt_tokens": 2227, "completion_tokens": 14, "model": "gpt-4o-mini", "cached": false}

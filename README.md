@@ -2,7 +2,7 @@
 
 **An incident-recovery agent whose fixes only count when an independent verifier confirms them from real metrics.**
 
-Built for the *Agentic Recovery of a Failing System* challenge by [YOUR NAME]. This is a prototype running against a simulated system, not real infrastructure.
+Built for the *Agentic Recovery of a Failing System* challenge by May Alotaibi. This is a prototype running against a simulated system, not real infrastructure.
 
 ## The problem
 

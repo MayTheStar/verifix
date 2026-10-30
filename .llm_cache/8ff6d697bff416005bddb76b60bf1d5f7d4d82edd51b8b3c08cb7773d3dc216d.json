@@ -1,0 +1,1 @@
+{"content": null, "tool_calls": [{"id": "call_889sEoLFu8qhWM4kIdV2OQst", "name": "query_metrics", "arguments": "{\"service\":\"gateway\"}"}], "prompt_tokens": 1901, "completion_tokens": 14, "model": "gpt-4o-mini", "cached": false}

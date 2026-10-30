@@ -1,0 +1,1 @@
+{"content": null, "tool_calls": [{"id": "call_HORgitqUgsbnIeVDpjK7DxB0", "name": "get_recent_deploys", "arguments": "{}"}], "prompt_tokens": 1773, "completion_tokens": 13, "model": "gpt-4o-mini", "cached": false}

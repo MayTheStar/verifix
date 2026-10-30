@@ -1,0 +1,1 @@
+{"content": null, "tool_calls": [{"id": "call_3qX9ihta17HbfKmmB4Q9VNH8", "name": "read_logs", "arguments": "{\"service\":\"orders\",\"last_n\":30}"}], "prompt_tokens": 3046, "completion_tokens": 19, "model": "gpt-4o-mini", "cached": false}
